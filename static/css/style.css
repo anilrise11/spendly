@@ -507,6 +507,29 @@ a { color: inherit; text-decoration: none; }
     color: var(--ink-faint);
 }
 
+.footer-legal {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.footer-legal-link {
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.footer-legal-link:hover {
+    color: var(--paper);
+}
+
+.footer-divider {
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+}
+
 /* ------------------------------------------------------------------ */
 /* Responsive                                                          */
 /* ------------------------------------------------------------------ */
