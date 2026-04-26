@@ -1,3 +1,4 @@
+import datetime
 import sqlite3
 
 from flask import Flask, render_template, request, redirect, url_for, flash, session
@@ -9,17 +10,27 @@ app = Flask(__name__)
 app.secret_key = "dev-secret-change-in-prod"
 
 
+@app.template_filter('rupees')
+def rupees_filter(amount):
+    return f"₹{amount:,.2f}"
+
+
 # ------------------------------------------------------------------ #
 # Routes                                                              #
 # ------------------------------------------------------------------ #
 
 @app.route("/")
 def landing():
+    if session.get('user_id'):
+        return redirect(url_for('profile'))
     return render_template("landing.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    if session.get('user_id'):
+        return redirect(url_for('profile'))
+
     if request.method == "GET":
         return render_template("register.html")
 
@@ -54,6 +65,9 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    if session.get('user_id'):
+        return redirect(url_for('profile'))
+
     if request.method == "GET":
         return render_template("login.html")
 
@@ -99,7 +113,62 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    return "Profile page — coming in Step 4"
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    current_month = datetime.date.today().strftime('%Y-%m')
+    month_label   = datetime.date.today().strftime('%B %Y')
+
+    conn = get_db()
+    try:
+        user = conn.execute(
+            "SELECT id, name, email, created_at FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+
+        total_spend = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()[0]
+
+        month_spend = conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) FROM expenses "
+            "WHERE user_id = ? AND strftime('%Y-%m', date) = ?",
+            (user_id, current_month)
+        ).fetchone()[0]
+
+        tx_count = conn.execute(
+            "SELECT COUNT(*) FROM expenses WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()[0]
+
+        top_cat_row = conn.execute(
+            "SELECT category FROM expenses WHERE user_id = ? "
+            "GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
+            (user_id,)
+        ).fetchone()
+        top_category = top_cat_row[0] if top_cat_row else None
+
+        recent_expenses = conn.execute(
+            "SELECT id, date, category, description, amount "
+            "FROM expenses WHERE user_id = ? "
+            "ORDER BY date DESC, id DESC LIMIT 10",
+            (user_id,)
+        ).fetchall()
+    finally:
+        conn.close()
+
+    return render_template(
+        "profile.html",
+        user=user,
+        total_spend=total_spend,
+        month_spend=month_spend,
+        tx_count=tx_count,
+        top_category=top_category,
+        recent_expenses=recent_expenses,
+        month_label=month_label,
+    )
 
 
 @app.route("/expenses/add")

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — Spendly{% endblock %}
+
+{% block content %}
+
+<div class="profile-page">
+    <div class="profile-inner">
+
+        <!-- Header -->
+        <div class="profile-header">
+            <div class="profile-header-info">
+                <h1 class="profile-title">Welcome back, {{ user.name }}</h1>
+                <p class="profile-subtitle">Member since {{ user.created_at[:10] }}</p>
+            </div>
+            <div class="profile-header-action">
+                <a href="{{ url_for('add_expense') }}" class="btn-primary">
+                    <i data-lucide="plus"></i> Add Expense
+                </a>
+            </div>
+        </div>
+
+        <!-- Stat tiles -->
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i data-lucide="wallet"></i> Total Spend
+                </div>
+                <div class="stat-value">{{ total_spend | rupees }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i data-lucide="calendar"></i> {{ month_label }}
+                </div>
+                <div class="stat-value">{{ month_spend | rupees }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i data-lucide="list"></i> Transactions
+                </div>
+                <div class="stat-value stat-value-sm">{{ tx_count }}</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">
+                    <i data-lucide="tag"></i> Top Category
+                </div>
+                <div class="stat-value stat-value-sm">
+                    {% if top_category %}
+                        <span class="category-dot cat-{{ top_category | lower }}"></span>{{ top_category }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent expenses -->
+        <h2 class="section-heading">Recent Expenses</h2>
+        <div class="expense-table-wrap">
+            {% if recent_expenses %}
+            <table class="expense-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Description</th>
+                        <th class="col-amount">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for exp in recent_expenses %}
+                    <tr>
+                        <td>{{ exp.date }}</td>
+                        <td>
+                            <span class="category-dot cat-{{ exp.category | lower }}"></span>{{ exp.category }}
+                        </td>
+                        <td>{{ exp.description or '—' }}</td>
+                        <td class="col-amount">{{ exp.amount | rupees }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <p>No expenses yet. <a href="{{ url_for('add_expense') }}">Add your first one.</a></p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}
