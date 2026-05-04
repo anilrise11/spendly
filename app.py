@@ -171,6 +171,87 @@ def profile():
     )
 
 
+@app.route("/profile/edit")
+def edit_profile():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+    conn = get_db()
+    try:
+        user = conn.execute(
+            "SELECT id, name, email FROM users WHERE id = ?",
+            (session['user_id'],)
+        ).fetchone()
+    finally:
+        conn.close()
+    return render_template("profile_edit.html", user=user)
+
+
+@app.route("/profile/edit", methods=["POST"])
+def update_profile():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+    name  = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip()
+    if not name:
+        return render_template("profile_edit.html", user={"name": name, "email": email},
+                               profile_error="Name is required.")
+    if not email:
+        return render_template("profile_edit.html", user={"name": name, "email": email},
+                               profile_error="Email is required.")
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE users SET name = ?, email = ? WHERE id = ?",
+            (name, email, session['user_id'])
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return render_template("profile_edit.html", user={"name": name, "email": email},
+                               profile_error="That email is already in use.")
+    finally:
+        conn.close()
+    session['user_name'] = name
+    flash("Profile updated.", "success")
+    return redirect(url_for('profile'))
+
+
+@app.route("/profile/password", methods=["POST"])
+def update_password():
+    if not session.get('user_id'):
+        return redirect(url_for('login'))
+    conn = get_db()
+    try:
+        user = conn.execute(
+            "SELECT name, email, password_hash FROM users WHERE id = ?",
+            (session['user_id'],)
+        ).fetchone()
+    finally:
+        conn.close()
+    current = request.form.get("current_password", "")
+    new_pw  = request.form.get("new_password", "")
+    confirm = request.form.get("confirm_password", "")
+    if not check_password_hash(user["password_hash"], current):
+        return render_template("profile_edit.html", user=user,
+                               password_error="Current password is incorrect.")
+    if len(new_pw) < 8:
+        return render_template("profile_edit.html", user=user,
+                               password_error="New password must be at least 8 characters.")
+    if new_pw != confirm:
+        return render_template("profile_edit.html", user=user,
+                               password_error="Passwords do not match.")
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (generate_password_hash(new_pw), session['user_id'])
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    flash("Password updated.", "success")
+    return redirect(url_for('profile'))
+
+
 @app.route("/expenses/add")
 def add_expense():
     return "Add expense — coming in Step 7"
